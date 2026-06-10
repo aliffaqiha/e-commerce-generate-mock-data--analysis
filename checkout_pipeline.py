@@ -3,30 +3,35 @@ import pandas as pd
 import random
 import plotly.express as px
 import time
+import io
 
-st.set_page_config(page_title="E-Commerce Real-Time Simulation Engine", layout="wide", page_icon="📊")
+st.set_page_config(page_title="E-Commerce Real-Time Simulation Engine", layout="wide")
 
+# Konfigurasi Tema Utama (Hijau & Putih) dan Pembersihan Font / Komponen
 st.html("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=400;500;600;700&display=swap');
         * { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .stApp { background-color: #f8fafc; }
+        .stApp { background-color: #ffffff; }
         
+        /* Modifikasi Card Metric */
         div[data-testid="stMetric"] {
-            background-color: white !important;
-            padding: 1.25rem !important;
-            border-radius: 12px !important;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05) !important;
-            border-left: 5px solid #3b82f6 !important;
+            background-color: #f8fafc !important;
+            padding: 1.5rem !important;
+            border-radius: 8px !important;
+            box-shadow: none !important;
+            border: 1px solid #e2e8f0 !important;
+            border-top: 4px solid #059669 !important;
         }
-        div[data-testid="stMetricLabel"] { color: #64748b !important; font-size: 0.875rem !important; font-weight: 600 !important; }
-        div[data-testid="stMetricValue"] { color: #1e293b !important; font-size: 1.75rem !important; font-weight: 700 !important; }
+        div[data-testid="stMetricLabel"] { color: #475569 !important; font-size: 0.85rem !important; font-weight: 700 !important; text-transform: uppercase; letter-spacing: 0.05em; }
+        div[data-testid="stMetricValue"] { color: #0f172a !important; font-size: 1.85rem !important; font-weight: 700 !important; }
         
+        /* Control Box Style */
         .control-box {
-            background-color: white;
+            background-color: #f8fafc;
             padding: 1.25rem;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgb(0 0 0 / 0.05);
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
             margin-bottom: 1.5rem;
         }
 
@@ -35,18 +40,40 @@ st.html("""
             vertical-align: top !important;
         }
         
+        /* Gaya Navigasi Tab */
         button[data-baseweb="tab"] {
-            font-size: 16px !important;
+            font-size: 15px !important;
             font-weight: 600 !important;
+            color: #64748b !important;
+        }
+        button[data-baseweb="tab"][aria-selected="true"] {
+            color: #059669 !important;
+        }
+        div[data-baseweb="tab-highlight"] {
+            background-color: #059669 !important;
+        }
+        
+        /* Sidebar Styling */
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #059669;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+            margin-top: 16px;
+        }
+        .sidebar-divider {
+            border-bottom: 1px solid #e2e8f0;
+            margin: 16px 0;
         }
     </style>
 """)
 
-# 2. INITIALIZATION STATE (CATALOG, LOG, SALES, CARTS) 
+# INITIALIZATION STATE
 if "catalog" not in st.session_state:
     random.seed(42)
     
-    # 1. MATRIKS ATRIBUT
     warna_pool = [
         "Jet Black", "Broken White", "Midnight Navy", "Charcoal Grey", "Olive Drab",
         "Khaki Tan", "Burgundy Maroon", "Spiced Mustard", "Soft Beige", "Terracotta Clay",
@@ -67,7 +94,6 @@ if "catalog" not in st.session_state:
         "Waterproof Zipper", "Ribbed Texture", "Button-Down Accent"
     ]
 
-    # 2. MASTER TEMPLATE PAKAIAN
     katalog_dasar_ekstrem = [
         ("Kaos Oblong Crewneck", "Pria", 65000),
         ("Kemeja Kerah Shanghai", "Pria", 135000),
@@ -157,13 +183,11 @@ if "auto_loop_count" not in st.session_state:
 if "engine_active" not in st.session_state:
     st.session_state.engine_active = False
 
-# 3. CORE LOGIC INJECTION ENGINE (HIGH TRAFFIC SAFEMODE)
+# CORE LOGIC INJECTION ENGINE
 def jalankan_suntik_data_otomatis():
-    """Mesin utama penyuntik data event simulasi"""
     users = list(st.session_state.user_carts.keys())
     st.session_state.auto_loop_count += 1
-    id_siklus = f"Siklus Waktu {st.session_state.auto_loop_count}"
-    
+    id_siklus = st.session_state.auto_loop_count
     
     target_sesi = random.randint(1, 50)
     k_aktual = min(target_sesi, len(users))
@@ -185,7 +209,7 @@ def jalankan_suntik_data_otomatis():
                 "Siklus": id_siklus,
                 "User ID": user,
                 "Isi Keranjang Terkini": str(string_list_keranjang) if string_list_keranjang else "Kosong",
-                "Jenis Aksi": "🟢 ADD_TO_CART",
+                "Jenis Aksi": "ADD_TO_CART",
                 "Detail Eksekusi": f"Menambahkan ke keranjang: {qty}x {produk['Nama Produk']}"
             })
             
@@ -222,55 +246,103 @@ def jalankan_suntik_data_otomatis():
                     "Siklus": id_siklus,
                     "User ID": user,
                     "Isi Keranjang Terkini": "Kosong (Cleared)",
-                    "Jenis Aksi": "🔵 CHECKOUT",
+                    "Jenis Aksi": "CHECKOUT",
                     "Detail Eksekusi": f"Checkout {invoice_id}: Membayar bersih {total_checkout_qty} unit item. Total: Rp {total_invoice_harga:,}"
                 })
 
-# 4. ENGINE AUTOMATION GATEWALK 
 if st.session_state.engine_active:
     jalankan_suntik_data_otomatis()
 
-# 5. TAMPILAN INTERFACE UTAMA 
-st.title("📊 User Shopping Activity Data Pipeline Engine")
-st.markdown("Sistem simulasi penyuntikan data transaksi retail berbasis urutan aktivitas user (*event-driven session stream*).")
-
-# --- CONTROL PANEL BAR ---
-with st.container():
-    st.html("<div class='control-box'>")
-    col_ctrl1, col_ctrl2, col_ctrl3 = st.columns([3, 4, 5])
-    
-    with col_ctrl1:
-        if st.button("🗑️ Kosongkan & Reset Data Simulasi", use_container_width=True):
-            st.session_state.db_log = []
-            st.session_state.db_sales = []
-            st.session_state.user_carts = {f"USER_{1000 + i}": {} for i in range(200)}
-            st.session_state.invoice_counter = 900001
-            st.session_state.auto_loop_count = 0
-            st.session_state.engine_active = False
-            st.rerun()
-            
-    with col_ctrl2:
-        st.session_state.engine_active = st.toggle(
-            "Inject Data Otomatis", 
-            value=st.session_state.engine_active
-        )
-        
-    with col_ctrl3:
-        if st.session_state.engine_active:
-            st.html("<p style='text-align: right; color: #10b981; font-weight: 600; margin-top: 4px;'>Aktivitas: 🔄 RUNNING (Data Mengalir Otomatis...)</p>")
-        else:
-            st.html("<p style='text-align: right; color: #ef4444; font-weight: 600; margin-top: 4px;'>Aktivitas: ⏸️ PAUSED (Mesin Berhenti)</p>")
-    st.html("</div>")
-
-# MASTER DATAFRAME GENERATION
+# MASTER DATA GENERATION
 all_logs_df = pd.DataFrame(st.session_state.db_log)
 all_sales_df = pd.DataFrame(st.session_state.db_sales)
 
-# FILTER LOGIC (KHUSUS UNTUK DATA FEED TAB)
+# --- NAVBAR / SIDEBAR MANAGEMENT ---
+with st.sidebar:
+    st.markdown("<div class='sidebar-title'>Kontrol Sistem</div>", unsafe_allow_html=True)
+    st.session_state.engine_active = st.toggle("Inject Data Otomatis", value=st.session_state.engine_active)
+    
+    if st.button("Kosongkan & Reset Simulasi", use_container_width=True):
+        st.session_state.db_log = []
+        st.session_state.db_sales = []
+        st.session_state.user_carts = {f"USER_{1000 + i}": {} for i in range(200)}
+        st.session_state.invoice_counter = 900001
+        st.session_state.auto_loop_count = 0
+        st.session_state.engine_active = False
+        st.rerun()
+        
+    st.markdown("<div class='sidebar-divider'></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sidebar-title'>Ekspor & Slicing Data</div>", unsafe_allow_html=True)
+    
+    # Penentuan batas siklus yang tersedia untuk ekspor
+    max_siklus_tersedia = int(st.session_state.auto_loop_count)
+    
+    # PROTEKSI ERROR: Jika siklus masih 0 atau 1, amankan komponen slider
+    if max_siklus_tersedia < 2:
+        slider_min = 1
+        slider_max = 2  # Dipaksa ke 2 agar min_value < max_value
+        slider_val = (1, 1)
+        slider_disabled = True
+    else:
+        slider_min = 1
+        slider_max = max_siklus_tersedia
+        slider_val = (1, max_siklus_tersedia)
+        slider_disabled = False
+    
+    rentang_siklus = st.slider(
+        "Slicing Urutan Siklus:",
+        min_value=slider_min,
+        max_value=slider_max,
+        value=slider_val,
+        disabled=slider_disabled
+    )
+    
+    format_file = st.selectbox("Format Output:", options=["CSV", "Parquet"])
+    
+    # Filter dataset penjualan internal berdasarkan hasil slicing
+    if not all_sales_df.empty:
+        df_ekspor_terfilter = all_sales_df[(all_sales_df['Siklus'] >= rentang_siklus[0]) & (all_sales_df['Siklus'] <= rentang_siklus[1])]
+    else:
+        df_ekspor_terfilter = pd.DataFrame()
+
+    # Logika pembuatan binary buffer file data download
+    if format_file == "CSV":
+        data_unduhan = df_ekspor_terfilter.to_csv(index=False).encode('utf-8')
+        nama_file_output = "ecom_data.csv"
+        mime_type_output = "text/csv"
+    else:
+        buffer_parquet = io.BytesIO()
+        df_ekspor_terfilter.to_parquet(buffer_parquet, index=False)
+        data_unduhan = buffer_parquet.getvalue()
+        nama_file_output = "ecom_data.parquet"
+        mime_type_output = "application/octet-stream"
+
+    st.download_button(
+        label=f"Unduh Berkas {format_file}",
+        data=data_unduhan,
+        file_name=nama_file_output,
+        mime=mime_type_output,
+        use_container_width=True,
+        disabled=df_ekspor_terfilter.empty
+    )
+    if df_ekspor_terfilter.empty:
+        st.caption("Tidak ada data transaksi pada rentang siklus terpilih.")
+
+# --- INTERFACE UTAMA ---
+st.title("User Shopping Activity Data Pipeline Engine")
+st.markdown("Sistem simulasi penyuntikan data transaksi retail berbasis urutan aktivitas user (event-driven session stream).")
+
+# Status Banner Kontrol
+if st.session_state.engine_active:
+    st.html("<div style='color: #059669; font-weight: 600; margin-bottom: 20px;'>Aktivitas: RUNNING (Data Mengalir Otomatis...)</div>")
+else:
+    st.html("<div style='color: #dc2626; font-weight: 600; margin-bottom: 20px;'>Aktivitas: PAUSED (Mesin Berhenti)</div>")
+
+# FILTER INTERFACE UTAMA (Tampilan Data Feed & Log)
 if not all_logs_df.empty:
     list_opsi_siklus = ["Semua Siklus Waktu"]
-    list_opsi_siklus.extend(list(all_logs_df['Siklus'].unique()))
-    filter_siklus_terpilih = st.selectbox("Filter Berdasarkan Periode:", options=list_opsi_siklus, label_visibility="collapsed")
+    list_opsi_siklus.extend(sorted(list(all_logs_df['Siklus'].unique())))
+    filter_siklus_terpilih = st.selectbox("Filter Tampilan Berdasarkan Periode:", options=list_opsi_siklus)
     
     if filter_siklus_terpilih != "Semua Siklus Waktu":
         df_log_filtered = all_logs_df[all_logs_df['Siklus'] == filter_siklus_terpilih]
@@ -282,53 +354,51 @@ else:
     df_log_filtered = pd.DataFrame()
     df_sales_filtered = pd.DataFrame()
 
-# 6. TAMPILAN KPI DASHBOARD (REAL-TIME METRICS)
+# METRIKS INDIKATOR UTAMA
 total_omset = df_sales_filtered['Subtotal'].sum() if not df_sales_filtered.empty else 0
 total_item_terjual = df_sales_filtered['Kuantitas'].sum() if not df_sales_filtered.empty else 0
 total_invoice_sukses = df_sales_filtered['Invoice ID'].nunique() if not df_sales_filtered.empty else 0
 
 col_m1, col_m2, col_m3 = st.columns(3)
-col_m1.metric(label="💰 TOTAL REVENUE / GMV", value=f"Rp {total_omset:,}")
-col_m2.metric(label="📦 TOTAL VOLUME ITEM TERJUAL", value=f"{total_item_terjual:,} pcs")
-col_m3.metric(label="🧾 JUMLAH INVOICE DI-BAYAR", value=f"{total_invoice_sukses:,} Sukses")
+col_m1.metric(label="TOTAL REVENUE / GMV", value=f"Rp {total_omset:,}")
+col_m2.metric(label="TOTAL VOLUME ITEM TERJUAL", value=f"{total_item_terjual:,} pcs")
+col_m3.metric(label="JUMLAH INVOICE DI-BAYAR", value=f"{total_invoice_sukses:,} Sukses")
 
 st.markdown("---")
 
-
-# 7. STRUKTUR MENU UTAMA 
+# STRUKTUR MENU UTAMA (TABULAR)
 tab_log, tab_profiling, tab_fashion, tab_segmentasi = st.tabs([
-    "📋 Data Feed & Log Pipeline", 
-    "👥 1. Profiling Aktivitas Pelanggan", 
-    "👕 2. Analisis Preferensi Fashion", 
-    "💎 3. Segmentasi Pengeluaran User"
+    "Data Feed & Log Pipeline", 
+    "Profiling Aktivitas Pelanggan", 
+    "Analisis Preferensi Fashion", 
+    "Segmentasi Pengeluaran User"
 ])
 
-
-# TAB DATA FEED & LOG PIPELINE (Tampilan Filtered Sesuai Dropdown)
+# TAB: DATA FEED & LOG PIPELINE
 with tab_log:
-    st.subheader("📋 Log Alur Aktivitas User")
+    st.subheader("Log Alur Aktivitas User")
     if not df_log_filtered.empty:
         df_log_display = df_log_filtered[['Siklus', 'User ID', 'Isi Keranjang Terkini', 'Jenis Aksi', 'Detail Eksekusi']].sort_index(ascending=False)
         st.dataframe(
             df_log_display, use_container_width=True, hide_index=True,
             column_config={
-                "Siklus": st.column_config.TextColumn("⏳ Periode", width="small"),
-                "User ID": st.column_config.TextColumn("👤 User ID", width="small"),
-                "Isi Keranjang Terkini": st.column_config.TextColumn("🛒 Daftar Barang di Keranjang", width="large"),
-                "Jenis Aksi": st.column_config.TextColumn("⚡ Aksi", width="medium"),
-                "Detail Eksekusi": st.column_config.TextColumn("📝 Keterangan Log System", width="large")
+                "Siklus": st.column_config.TextColumn("Periode", width="small"),
+                "User ID": st.column_config.TextColumn("User ID", width="small"),
+                "Isi Keranjang Terkini": st.column_config.TextColumn("Daftar Barang di Keranjang", width="large"),
+                "Jenis Aksi": st.column_config.TextColumn("Aksi", width="medium"),
+                "Detail Eksekusi": st.column_config.TextColumn("Keterangan Log System", width="large")
             }
         )
     else:
-        st.info("Belum ada data aktivitas. Nyalakan saklar otomatisasi di atas.")
+        st.info("Belum ada data aktivitas. Nyalakan saklar otomatisasi di panel samping.")
 
-    st.subheader("💸 Transaksi Masuk")
+    st.subheader("Transaksi Masuk")
     if not df_sales_filtered.empty:
         df_sales_display = df_sales_filtered[['Invoice ID', 'Siklus', 'User ID', 'Nama Produk', 'Harga Satuan', 'Kuantitas', 'Subtotal']].sort_index(ascending=False)
         st.dataframe(
             df_sales_display, use_container_width=True, hide_index=True,
             column_config={
-                "Invoice ID": st.column_config.TextColumn("🧾 Invoice ID"),
+                "Invoice ID": st.column_config.TextColumn("Invoice ID"),
                 "Harga Satuan": st.column_config.NumberColumn("Harga Satuan", format="Rp %d"),
                 "Kuantitas": st.column_config.NumberColumn("Qty Terjual", format="%d pcs"),
                 "Subtotal": st.column_config.NumberColumn("Subtotal Keluar", format="Rp %d")
@@ -337,59 +407,57 @@ with tab_log:
     else:
         st.info("Belum ada transaksi finansial sukses.")
 
-# TAB 1: PROFILING AKTIVITAS PELANGGAN
+# TAB: PROFILING AKTIVITAS PELANGGAN
 with tab_profiling:
-    st.subheader("👥 Analisis Profiling Interaksi & Konversi Pelanggan ")
+    st.subheader("Analisis Profiling Interaksi & Konversi Pelanggan")
     
     if not all_logs_df.empty:
         col_prof1, col_prof2 = st.columns([4, 6])
         
         with col_prof1:
-            total_atc = len(all_logs_df[all_logs_df['Jenis Aksi'] == "🟢 ADD_TO_CART"])
-            total_co = len(all_logs_df[all_logs_df['Jenis Aksi'] == "🔵 CHECKOUT"])
+            total_atc = len(all_logs_df[all_logs_df['Jenis Aksi'] == "ADD_TO_CART"])
+            total_co = len(all_logs_df[all_logs_df['Jenis Aksi'] == "CHECKOUT"])
             conversion_rate = (total_co / total_atc * 100) if total_atc > 0 else 0
             
-            st.metric("🎯 Macro Conversion Rate Total (ATC -> CO)", f"{conversion_rate:.2f} %")
+            st.metric("Macro Conversion Rate Total (ATC -> CO)", f"{conversion_rate:.2f} %")
             
             df_action_count = all_logs_df['Jenis Aksi'].value_counts().reset_index()
             fig_actions = px.pie(df_action_count, values='count', names='Jenis Aksi', 
-                                 color='Jenis Aksi', color_discrete_map={"🟢 ADD_TO_CART": "#10b981", "🔵 CHECKOUT": "#3b82f6"},
+                                 color='Jenis Aksi', color_discrete_map={"ADD_TO_CART": "#a7f3d0", "CHECKOUT": "#059669"},
                                  hole=0.4, title="Komposisi Beban Event Aktivitas Keseluruhan")
+            fig_actions.update_layout(template="plotly_white")
             st.plotly_chart(fig_actions, use_container_width=True)
             
         with col_prof2:
-            st.markdown("**🏆 10 Pelanggan Paling Aktif**")
+            st.markdown("**10 Pelanggan Paling Aktif**")
             df_user_activity = all_logs_df.groupby(['User ID', 'Jenis Aksi']).size().unstack(fill_value=0).reset_index()
             
-            if "🟢 ADD_TO_CART" not in df_user_activity.columns: df_user_activity["🟢 ADD_TO_CART"] = 0
-            if "🔵 CHECKOUT" not in df_user_activity.columns: df_user_activity["🔵 CHECKOUT"] = 0
+            if "ADD_TO_CART" not in df_user_activity.columns: df_user_activity["ADD_TO_CART"] = 0
+            if "CHECKOUT" not in df_user_activity.columns: df_user_activity["CHECKOUT"] = 0
             
-            df_user_activity['Total Aktivitas'] = df_user_activity["🟢 ADD_TO_CART"] + df_user_activity["🔵 CHECKOUT"]
+            df_user_activity['Total Aktivitas'] = df_user_activity["ADD_TO_CART"] + df_user_activity["CHECKOUT"]
             df_user_activity = df_user_activity.sort_values(by='Total Aktivitas', ascending=False).head(10)
             
             st.dataframe(
                 df_user_activity, use_container_width=True, hide_index=True,
                 column_config={
-                    "User ID": st.column_config.TextColumn("👤 User ID"),
-                    "🟢 ADD_TO_CART": st.column_config.NumberColumn("🛒 Jml Add To Cart"),
-                    "🔵 CHECKOUT": st.column_config.NumberColumn("🧾 Jml Checkout"),
-                    "Total Aktivitas": st.column_config.NumberColumn("⚡ Total Hit Konten")
+                    "User ID": st.column_config.TextColumn("User ID"),
+                    "ADD_TO_CART": st.column_config.NumberColumn("Jml Add To Cart"),
+                    "CHECKOUT": st.column_config.NumberColumn("Jml Checkout"),
+                    "Total Aktivitas": st.column_config.NumberColumn("Total Hit Konten")
                 }
             )
     else:
         st.info("Membutuhkan data log untuk menganalisis profile perilaku pelanggan.")
 
-
-# TAB 2: ANALISIS PREFERENSI FASHION
-
+# TAB: ANALISIS PREFERENSI FASHION
 with tab_fashion:
-    st.subheader("👕 Tren Preferensi Atribut Fashion Pelanggan")
+    st.subheader("Tren Preferensi Atribut Fashion Pelanggan")
     
     if not all_sales_df.empty:
         def ekstrak_atribut(row):
             nama_mentah = row['Nama Produk']
             try:
-                # Menangani pemotongan nama berbasis aksen baru di pool raksasa
                 base_name = nama_mentah.split(" (")[0]
                 part_attributes = nama_mentah.split(" (")[1].replace(")", "").split(" - ")
                 return pd.Series([base_name, part_attributes[0], part_attributes[1]])
@@ -402,32 +470,31 @@ with tab_fashion:
         col_f1, col_f2, col_f3 = st.columns(3)
         
         with col_f1:
-            st.markdown("**👔 Model Pakaian Terfavorit**")
+            st.markdown("**Model Pakaian Terfavorit**")
             df_model = df_fashion_parsed.groupby('Kategori Baju')['Kuantitas'].sum().reset_index().sort_values(by='Kuantitas', ascending=False)
-            fig_model = px.bar(df_model, x='Kuantitas', y='Kategori Baju', orientation='h', color_continuous_scale='Mint', color='Kuantitas')
-            fig_model.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
+            fig_model = px.bar(df_model, x='Kuantitas', y='Kategori Baju', orientation='h', color_discrete_sequence=['#059669'])
+            fig_model.update_layout(template="plotly_white", showlegend=False, yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig_model, use_container_width=True)
             
         with col_f2:
-            st.markdown("**🧵 Bahan Kain Paling Disukai**")
+            st.markdown("**Bahan Kain Paling Disukai**")
             df_bahan = df_fashion_parsed.groupby('Bahan Kain')['Kuantitas'].sum().reset_index()
-            fig_bahan = px.pie(df_bahan, values='Kuantitas', names='Bahan Kain', color_discrete_sequence=px.colors.sequential.YlOrBr)
+            fig_bahan = px.pie(df_bahan, values='Kuantitas', names='Bahan Kain', color_discrete_sequence=px.colors.sequential.Greens_r)
+            fig_bahan.update_layout(template="plotly_white")
             st.plotly_chart(fig_bahan, use_container_width=True)
             
         with col_f3:
-            st.markdown("**🎨 Varian Warna Terlaris**")
+            st.markdown("**Varian Warna Terlaris**")
             df_warna = df_fashion_parsed.groupby('Varian Warna')['Kuantitas'].sum().reset_index().sort_values(by='Kuantitas', ascending=False)
-            fig_warna = px.bar(df_warna, x='Varian Warna', y='Kuantitas', color='Varian Warna', color_discrete_map={
-                "Jet Black": "#1e293b", "Broken White": "#e2e8f0", "Midnight Navy": "#1e3a8a", "Charcoal Grey": "#475569", "Olive Drab": "#3f6212"
-            })
+            fig_warna = px.bar(df_warna, x='Varian Warna', y='Kuantitas', color_discrete_sequence=['#34d399'])
+            fig_warna.update_layout(template="plotly_white")
             st.plotly_chart(fig_warna, use_container_width=True)
     else:
         st.info("Preferensi gaya belanja fashion akan muncul setelah ada transaksi checkout finansial.")
 
-
-# TAB 3: SEGMENTASI PENGELUARAN USER
+# TAB: SEGMENTASI PENGELUARAN USER
 with tab_segmentasi:
-    st.subheader("💎 Segmentasi Kelas Pengeluaran Pelanggan")
+    st.subheader("Segmentasi Kelas Pengeluaran Pelanggan")
     
     if not all_sales_df.empty:
         df_monetary = all_sales_df.groupby('User ID')['Subtotal'].sum().reset_index()
@@ -435,49 +502,50 @@ with tab_segmentasi:
         
         def tentukan_segmen(total):
             if total >= 1500000:
-                return "🐋 Whale / Pelanggan Sultan"
+                return "Whale / Pelanggan Utama"
             elif total >= 500000:
-                return "⭐ Core Buyer / Loyal"
+                return "Core Buyer / Loyal"
             else:
-                return "🎯 Budget Shopper / Hemat"
+                return "Budget Shopper / Strategis"
                 
         df_monetary['Segmen Pengguna'] = df_monetary['Total Belanja'].apply(tentukan_segmen)
         
         col_seg1, col_seg2 = st.columns([6, 4])
         
         with col_seg1:
-            st.markdown("**📊 Tabel Klasifikasi Nilai Pelanggan (Akumulasi Sejarah)**")
+            st.markdown("**Tabel Klasifikasi Nilai Pelanggan (Akumulasi Sejarah)**")
             st.dataframe(
                 df_monetary.sort_values(by='Total Belanja', ascending=False),
                 use_container_width=True, hide_index=True,
                 column_config={
-                    "User ID": st.column_config.TextColumn("👤 User ID"),
-                    "Total Belanja": st.column_config.NumberColumn("💰 Akumulasi Dana Belanja", format="Rp %d"),
-                    "Segmen Pengguna": st.column_config.TextColumn("💎 Kategori Segmen")
+                    "User ID": st.column_config.TextColumn("User ID"),
+                    "Total Belanja": st.column_config.NumberColumn("Akumulasi Dana Belanja", format="Rp %d"),
+                    "Segmen Pengguna": st.column_config.TextColumn("Kategori Segmen")
                 }
             )
             
         with col_seg2:
-            st.markdown("**🎯 Distribusi Kasta Pasar Pelanggan**")
+            st.markdown("**Distribusi Komponen Pasar Pelanggan**")
             df_seg_count = df_monetary['Segmen Pengguna'].value_counts().reset_index()
             fig_seg = px.pie(df_seg_count, values='count', names='Segmen Pengguna', color='Segmen Pengguna',
                              color_discrete_map={
-                                 "🐋 Whale / Pelanggan Sultan": "#7c3aed",
-                                 "⭐ Core Buyer / Loyal": "#2563eb",
-                                 "🎯 Budget Shopper / Hemat": "#94a3b8"
+                                 "Whale / Pelanggan Utama": "#047857",
+                                 "Core Buyer / Loyal": "#10b981",
+                                 "Budget Shopper / Strategis": "#a7f3d0"
                              })
+            fig_seg.update_layout(template="plotly_white")
             st.plotly_chart(fig_seg, use_container_width=True)
             
-            with st.expander("💡 Metodologi Ambang Batas Segmen (Rule-based Thresholds)"):
+            with st.expander("Metodologi Ambang Batas Segmen (Rule-based Thresholds)"):
                 st.markdown("""
-                - **Whale / Sultan**: Belanja kumulatif **>= Rp 1.500.000** *(Kontributor profit terbesar)*.
-                - **Core Buyer**: Belanja kumulatif **Rp 500.000 s/d Rp 1.499.000** *(Pelanggan reguler setia)*.
-                - **Budget Shopper**: Belanja kumulatif **< Rp 500.000** *(Pelanggan sangat sensitif harga)*.
+                - **Whale / Utama**: Belanja kumulatif **>= Rp 1.500.000** (Kontributor profit terbesar).
+                - **Core Buyer**: Belanja kumulatif **Rp 500.000 s/d Rp 1.499.000** (Pelanggan reguler setia).
+                - **Budget Shopper**: Belanja kumulatif **< Rp 500.000** (Pelanggan sangat sensitif harga).
                 """)
     else:
         st.info("Belum ada nominal dana terakumulasi. Jalankan simulasi untuk membentuk peta segmentasi pasar.")
 
-# 9. LIVE DATA REFRESH TICKER LOOP
+# LIVE DATA REFRESH TICKER LOOP
 if st.session_state.engine_active:
     time.sleep(3.0)
     st.rerun()
